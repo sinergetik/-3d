@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ru" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D & 2D Parametric Spatula Roller Handle Designer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js for 3D Preview -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .slider-thumb::-webkit-slider-thumb {
+            background: #3b82f6;
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
+
+    <!-- Top Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shadow-md shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="bg-blue-600 text-white p-2 rounded-xl shadow-lg shadow-blue-600/30">
+                <i class="fa-solid fa-screwdriver-wrench text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight">ErgoSpatula Studio</h1>
+                <p class="text-xs text-slate-400">Параметрический генератор рукояти для шпателя натяжных потолков</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="switchTab('3d')" id="btn-tab-3d" class="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white transition shadow-sm flex items-center gap-2">
+                <i class="fa-solid fa-cube"></i> 3D Модель
+            </button>
+            <button onclick="switchTab('2d')" id="btn-tab-2d" class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-2">
+                <i class="fa-solid fa-drafting-compass"></i> 2D Чертеж
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        
+        <!-- Sidebar Controls -->
+        <aside class="w-full lg:w-96 bg-slate-900/90 backdrop-blur border-r border-slate-800 p-5 overflow-y-auto flex flex-col space-y-6 shrink-0">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-blue-500"></i> Размеры и геометрия
+                </h2>
+
+                <!-- Control: Handle Length -->
+                <div class="space-y-1 mb-4">
+                    <div class="flex justify-between text-xs font-medium text-slate-300">
+                        <span>Длина рукояти (Length)</span>
+                        <span id="val-length" class="text-blue-400 font-mono">110 мм</span>
+                    </div>
+                    <input type="range" id="param-length" min="90" max="140" value="110" step="1" 
+                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="updateParameters()">
+                </div>
+
+                <!-- Control: Handle Thickness -->
+                <div class="space-y-1 mb-4">
+                    <div class="flex justify-between text-xs font-medium text-slate-300">
+                        <span>Толщина половинки (Half Thickness)</span>
+                        <span id="val-thickness" class="text-blue-400 font-mono">11 мм</span>
+                    </div>
+                    <input type="range" id="param-thickness" min="8" max="16" value="11" step="0.5" 
+                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="updateParameters()">
+                </div>
+
+                <!-- Control: Finger Grooves Depth -->
+                <div class="space-y-1 mb-4">
+                    <div class="flex justify-between text-xs font-medium text-slate-300">
+                        <span>Глубина подпальцевых выемок</span>
+                        <span id="val-groove" class="text-blue-400 font-mono">5 мм</span>
+                    </div>
+                    <input type="range" id="param-groove" min="2" max="9" value="5" step="0.5" 
+                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="updateParameters()">
+                </div>
+
+                <!-- Control: Handle Angle / Tilt -->
+                <div class="space-y-1 mb-4">
+                    <div class="flex justify-between text-xs font-medium text-slate-300">
+                        <span>Угол наклона носовой части</span>
+                        <span id="val-angle" class="text-blue-400 font-mono">15°</span>
+                    </div>
+                    <input type="range" id="param-angle" min="0" max="35" value="15" step="1" 
+                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="updateParameters()">
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- Fixed Specs Info Box -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-lock text-emerald-500"></i> Фиксированные параметры узла
+                </h3>
+                <div class="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                    <div class="bg-slate-900 p-2 rounded border border-slate-800">
+                        <span class="text-slate-500 block">Латунные вставки:</span>
+                        <strong class="text-slate-100 font-mono">Ø25 мм, гл. 2.1 мм</strong>
+                    </div>
+                    <div class="bg-slate-900 p-2 rounded border border-slate-800">
+                        <span class="text-slate-500 block">Стальное колесо:</span>
+                        <strong class="text-slate-100 font-mono">Ø75 мм, т. 0.5 мм</strong>
+                    </div>
+                    <div class="bg-slate-900 p-2 rounded border border-slate-800">
+                        <span class="text-slate-500 block">Отверстие под болт:</span>
+                        <strong class="text-slate-100 font-mono">Ø5.0 мм (с зазором)</strong>
+                    </div>
+                    <div class="bg-slate-900 p-2 rounded border border-slate-800">
+                        <span class="text-slate-500 block">Суммарно латунь:</span>
+                        <strong class="text-slate-100 font-mono">4.2 мм</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Buttons -->
+            <div class="mt-auto space-y-3 pt-4">
+                <button onclick="downloadSpecs()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-xl transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-file-arrow-down"></i> Скачать спецификацию (TXT)
+                </button>
+                <button onclick="showPrintTips()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 text-sm border border-slate-700">
+                    <i class="fa-solid fa-print"></i> Рекомендации по 3D-печати
+                </button>
+            </div>
+        </aside>
+
+        <!-- Viewport Area -->
+        <main class="flex-1 relative bg-slate-950 flex flex-col">
+            
+            <!-- 3D View Tab Content -->
+            <div id="tab-3d" class="absolute inset-0 flex flex-col">
+                <div id="canvas-container" class="flex-1 w-full h-full cursor-grab active:cursor-grabbing"></div>
+                <div class="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur border border-slate-800 px-3 py-2 rounded-lg text-xs text-slate-400 pointer-events-none flex items-center gap-2">
+                    <i class="fa-solid fa-rotate text-blue-400"></i> Вращайте мышкой • Колесо прокрутки: зум
+                </div>
+            </div>
+
+            <!-- 2D Blueprint Tab Content -->
+            <div id="tab-2d" class="absolute inset-0 hidden flex flex-col items-center justify-center p-6 bg-slate-950">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-4xl h-full max-h-[85vh] flex flex-col shadow-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-compass-drafting text-blue-500"></i> 2D Проекция половины рукояти (Вид сбоку в разрезе)
+                        </h3>
+                        <span class="text-xs text-slate-400 font-mono">Масштаб 1:1 (Сетка 10мм)</span>
+                    </div>
+                    <div class="flex-1 bg-slate-950 rounded-xl border border-slate-800 relative overflow-hidden flex items-center justify-center">
+                        <canvas id="canvas-2d" class="w-full h-full"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modal for Print Tips -->
+    <div id="modal-tips" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-cube text-blue-500"></i> Параметры слайсера для печати
+                </h3>
+                <button onclick="closePrintTips()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="space-y-3 text-sm text-slate-300">
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <span class="text-xs text-blue-400 font-semibold block mb-1">РЕКОМЕНДУЕМЫЙ ПЛАСТИК</span>
+                    <p>PETG или ASA / ABS (высокая ударная вязкость и прочность на сжатие).</p>
+                </div>
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <span class="text-xs text-blue-400 font-semibold block mb-1">НАСТРОЙКИ СЛОЕВ</span>
+                    <ul class="list-disc list-inside space-y-1 text-xs text-slate-400">
+                        <li>Периметры (Walls): не менее <strong>4-5 линий</strong></li>
+                        <li>Заполнение: <strong>35-40% (Gyroid / Cubic)</strong></li>
+                        <li>Высота слоя: <strong>0.2 мм</strong></li>
+                        <li>Ориентация: печатать плашмя (плоскостью стыка к столу)</li>
+                    </ul>
+                </div>
+            </div>
+            <button onclick="closePrintTips()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 rounded-xl transition">Понятно</button>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-blue-600 text-white px-4 py-3 rounded-xl shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 z-50 text-sm font-medium flex items-center gap-2">
+        <i class="fa-solid fa-circle-check"></i> <span id="toast-msg">Готово!</span>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // State Variables
+        let state = {
+            length: 110,
+            thickness: 11,
+            groove: 5,
+            angle: 15
+        };
+
+        // Tabs switching
+        function switchTab(tab) {
+            const btn3d = document.getElementById('btn-tab-3d');
+            const btn2d = document.getElementById('btn-tab-2d');
+            const tab3d = document.getElementById('tab-3d');
+            const tab2d = document.getElementById('tab-2d');
+
+            if (tab === '3d') {
+                btn3d.className = "px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white transition shadow-sm flex items-center gap-2";
+                btn2d.className = "px-4 py-2 text-sm font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-2";
+                tab3d.classList.remove('hidden');
+                tab2d.classList.add('hidden');
+                onWindowResize();
+            } else {
+                btn2d.className = "px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white transition shadow-sm flex items-center gap-2";
+                btn3d.className = "px-4 py-2 text-sm font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-2";
+                tab2d.classList.remove('hidden');
+                tab3d.classList.add('hidden');
+                draw2DBlueprint();
+            }
+        }
+
+        // Update parameters from sliders
+        function updateParameters() {
+            state.length = parseFloat(document.getElementById('param-length').value);
+            state.thickness = parseFloat(document.getElementById('param-thickness').value);
+            state.groove = parseFloat(document.getElementById('param-groove').value);
+            state.angle = parseFloat(document.getElementById('param-angle').value);
+
+            document.getElementById('val-length').innerText = state.length + ' мм';
+            document.getElementById('val-thickness').innerText = state.thickness + ' мм';
+            document.getElementById('val-groove').innerText = state.groove + ' мм';
+            document.getElementById('val-angle').innerText = state.angle + '°';
+
+            rebuild3DModel();
+            if (!document.getElementById('tab-2d').classList.contains('hidden')) {
+                draw2DBlueprint();
+            }
+        }
+
+        // --- THREE.JS 3D SETUP ---
+        let scene, camera, renderer, handleGroup, wheelMesh;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotationAngle = { x: 0.3, y: -0.6 };
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x020617);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 0, 180);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(100, 200, 150);
+            scene.add(dirLight);
+
+            const pointLight = new THREE.PointLight(0x3b82f6, 1, 300);
+            pointLight.position.set(-100, -100, 100);
+            scene.add(pointLight);
+
+            // Interaction events for rotation
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                rotationAngle.y += deltaX * 0.008;
+                rotationAngle.x += deltaY * 0.008;
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+                updateModelRotation();
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            // Touch support
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            });
+            window.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length !== 1) return;
+                const deltaX = e.touches[0].clientX - previousMousePosition.x;
+                const deltaY = e.touches[0].clientY - previousMousePosition.y;
+                rotationAngle.y += deltaX * 0.008;
+                rotationAngle.x += deltaY * 0.008;
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                updateModelRotation();
+            });
+            window.addEventListener('touchend', () => { isDragging = false; });
+
+            window.addEventListener('resize', onWindowResize);
+
+            buildHandleGeometry();
+            animate3D();
+        }
+
+        function updateModelRotation() {
+            if (handleGroup) {
+                handleGroup.rotation.x = rotationAngle.x;
+                handleGroup.rotation.y = rotationAngle.y;
+            }
+        }
+
+        function buildHandleGeometry() {
+            if (handleGroup) scene.remove(handleGroup);
+            handleGroup = new THREE.Group();
+
+            // Materials
+            const bodyMaterial = new THREE.MeshStandardMaterial({
+                color: 0x1e293b,
+                roughness: 0.4,
+                metalness: 0.1
+            });
+
+            const brassMaterial = new THREE.MeshStandardMaterial({
+                color: 0xd4af37,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+
+            const steelMaterial = new THREE.MeshStandardMaterial({
+                color: 0x94a3b8,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+
+            // --- Generate Knife-Like Ergonomic Handle Shape (Extruded 2D Profile) ---
+            const shape = new THREE.Shape();
+            const L = state.length;
+            const T = state.thickness;
+            const G = state.groove;
+
+            // Parametric outline of the knife handle
+            shape.moveTo(0, 15);
+            shape.lineTo(15, 25);
+            // Top spine contour
+            shape.bezierCurveTo(L * 0.4, 30, L * 0.8, 20, L, 0);
+            // Butt contour
+            shape.bezierCurveTo(L + 10, -20, L * 0.7, -40, L * 0.5, -35);
+            // Finger groove area
+            shape.bezierCurveTo(L * 0.3 - G, -30, 20 - G, -25 - G * 0.5, 0, -10);
+            shape.closePath();
+
+            const extrudeSettings = {
+                steps: 1,
+                depth: T,
+                bevelEnabled: true,
+                bevelThickness: 1.5,
+                bevelSize: 1.5,
+                bevelSegments: 4
+            };
+
+            const geomHalf1 = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geomHalf1.center();
+
+            // Half 1
+            const half1 = new THREE.Mesh(geomHalf1, bodyMaterial);
+            half1.position.z = T / 2 + 0.4;
+            handleGroup.add(half1);
+
+            // Half 2 (Mirrored gap)
+            const half2 = new THREE.Mesh(geomHalf1, bodyMaterial);
+            half2.position.z = -(T / 2 + 0.4);
+            half2.rotation.y = Math.PI;
+            handleGroup.add(half2);
+
+            // --- Brass Inserts (Diameter 25mm, Thickness 4.2mm total -> 2.1mm depth each half) ---
+            const brassGeo = new THREE.CylinderGeometry(12.5, 12.5, 2.1, 32);
+            brassGeo.rotateX(Math.PI / 2);
+
+            const brass1 = new THREE.Mesh(brassGeo, brassMaterial);
+            brass1.position.set(-15, 0, 1.05);
+            handleGroup.add(brass1);
+
+            const brass2 = new THREE.Mesh(brassGeo, brassMaterial);
+            brass2.position.set(-15, 0, -1.05);
+            handleGroup.add(brass2);
+
+            // --- Steel Wheel (Diameter 75mm, Thickness 0.5mm) ---
+            const wheelGeo = new THREE.CylinderGeometry(37.5, 37.5, 0.5, 64);
+            wheelGeo.rotateX(Math.PI / 2);
+            const wheel = new THREE.Mesh(wheelGeo, steelMaterial);
+            wheel.position.set(-15, 0, 0);
+            handleGroup.add(wheel);
+
+            // --- Bolt / Axle (Diameter 4.8mm -> 5mm) ---
+            const boltGeo = new THREE.CylinderGeometry(2.5, 2.5, T * 2 + 4, 16);
+            boltGeo.rotateX(Math.PI / 2);
+            const bolt = new THREE.Mesh(boltGeo, steelMaterial);
+            bolt.position.set(-15, 0, 0);
+            handleGroup.add(bolt);
+
+            scene.add(handleGroup);
+            updateModelRotation();
+        }
+
+        function rebuild3DModel() {
+            buildHandleGeometry();
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !renderer || !camera) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        // --- 2D BLUEPRINT DRAWING ---
+        function draw2DBlueprint() {
+            const canvas = document.getElementById('canvas-2d');
+            const parent = canvas.parentElement;
+            canvas.width = parent.clientWidth;
+            canvas.height = parent.clientHeight;
+            const ctx = canvas.getContext('2d');
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const cx = canvas.width / 2 - 30;
+            const cy = canvas.height / 2 + 20;
+            const scale = 2.5; // pixels per mm
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // Draw Grid Lines
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            const step = 20 * scale;
+            for (let x = -canvas.width; x < canvas.width; x += step) {
+                ctx.beginPath(); ctx.moveTo(x, -canvas.height); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = -canvas.height; y < canvas.height; y += step) {
+                ctx.beginPath(); ctx.moveTo(-canvas.width, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+
+            // Draw Handle Profile Outline (2D)
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2.5;
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+
+            ctx.beginPath();
+            const L = state.length * scale;
+            const G = state.groove * scale;
+
+            ctx.moveTo(0, 15 * scale);
+            ctx.lineTo(15 * scale, 25 * scale);
+            ctx.bezierCurveTo(L * 0.4, 30 * scale, L * 0.8, 20 * scale, L, 0);
+            ctx.bezierCurveTo(L + 10 * scale, -20 * scale, L * 0.7, -40 * scale, L * 0.5, -35 * scale);
+            ctx.bezierCurveTo(L * 0.3 - G, -30 * scale, 20 * scale - G, -25 * scale, 0, -10 * scale);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw Wheel Outline (Ø75mm -> Radius 37.5mm)
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(-15 * scale, 0, 37.5 * scale, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Draw Brass Insert Pocket (Ø25mm -> Radius 12.5mm)
+            ctx.strokeStyle = '#d4af37';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(-15 * scale, 0, 12.5 * scale, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw Axle Hole (Ø5mm)
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(-15 * scale, 0, 2.5 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Dimensions / Labels
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '12px Inter, sans-serif';
+            ctx.fillText(`Длина: ${state.length} мм`, L * 0.3, 50);
+            ctx.fillText(`Ось Ø5 мм`, -25 * scale, -45 * scale);
+            ctx.fillText(`Латунная вставка Ø25 мм (глубина 2.1 мм)`, -70 * scale, -65 * scale);
+
+            ctx.restore();
+        }
+
+        // --- EXPORT & NOTIFICATION ---
+        function downloadSpecs() {
+            const content = `СПЕЦИФИКАЦИЯ ДЛЯ ПЕЧАТИ ШПАТЕЛЯ НАТЯЖНЫХ ПОТОЛКОВ
+===================================================
+Дата генерации: ${new Date().toLocaleDateString()}
+
+ПАРАМЕТРЫ РУКОЯТИ:
+- Длина рукояти: ${state.length} мм
+- Толщина одной половинки: ${state.thickness} мм
+- Глубина подпальцевых выемок: ${state.groove} мм
+- Угол носовой части: ${state.angle}°
+
+ПОСАДОЧНЫЕ УЗЛЫ (СТАНДАРТ):
+- Латунные вставки: Диаметр 25.0 мм, суммарная толщина 4.2 мм (глубина посадки 2.1 мм в каждой половинке)
+- Стальное колесо: Диаметр 75.0 мм, толщина 0.5 мм
+- Отверстие под крепеж (болт): Диаметр 5.0 мм (с зазором под 4.8 мм болт)
+
+РЕКОМЕНДАЦИИ ПО 3D-ПЕЧАТИ:
+- Материал: PETG / ASA / ABS
+- Периметры: 4-5 линий
+- Заполнение: 35-40% (Gyroid)
+- Ориентация: Печать плашмя (плоскостью стыка к столу)
+`;
+
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `spatula_handle_spec_${state.length}mm.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showToast('Спецификация успешно скачана!');
+        }
+
+        function showPrintTips() {
+            document.getElementById('modal-tips').classList.remove('hidden');
+            document.getElementById('modal-tips').classList.add('flex');
+        }
+
+        function closePrintTips() {
+            document.getElementById('modal-tips').classList.remove('flex');
+            document.getElementById('modal-tips').classList.add('hidden');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            init3D();
+        };
+    </script>
+</body>
+</html>
